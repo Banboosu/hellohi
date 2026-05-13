@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>GIF Generator</title>
+        <link rel="stylesheet" href="style.css" />
+        <style>
+            /* 预载入字体（如果本地有的话） */
+            @font-face {
+                font-family: "Source Han Sans SC";
+                src:
+                    local("Source Han Sans SC Medium"),
+                    local("Source Han Sans Medium");
+                font-weight: 500;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <header>
+                <h1>GIF GENERATOR</h1>
+            </header>
+
+            <main>
+                <div
+                    class="tip"
+                    style="margin-bottom: 1rem; font-size: 0.9rem; color: #666"
+                >
+                    提示：如果无法生成 GIF，请使用本地服务器运行。
+                </div>
+                <div class="card">
+                    <div class="preview-area">
+                        <canvas id="canvas" width="720" height="720"></canvas>
+                    </div>
+                    <div class="controls">
+                        <div class="upload-box">
+                            <label for="fileInput" class="btn">选择图片</label>
+                            <input
+                                type="file"
+                                id="fileInput"
+                                accept="image/*"
+                                style="display: none"
+                            />
+                        </div>
+                        <button id="toggleAdjust" class="btn">
+                            调整模式: 关
+                        </button>
+                        <div
+                            class="control-group"
+                            style="
+                                display: flex;
+                                align-items: center;
+                                gap: 0.5rem;
+                                margin: 0 1rem;
+                            "
+                        >
+                            <label for="scaleRange">缩放:</label>
+                            <input
+                                type="range"
+                                id="scaleRange"
+                                min="10"
+                                max="300"
+                                value="100"
+                            />
+                        </div>
+                        <button id="generateBtn" class="btn">生成 GIF</button>
+                    </div>
+                </div>
+
+                <div id="resultCard" class="card" style="display: none">
+                    <h2>生成结果</h2>
+                    <div class="result-area">
+                        <img id="resultImage" alt="Generated GIF" />
+                    </div>
+                    <div class="controls">
+                        <a id="downloadBtn" class="btn" download="generated.gif"
+                            >下载 GIF</a
+                        >
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <script src="gif.js"></script>
+        <script src="main.js"></script>
+    </body>
+</html>
