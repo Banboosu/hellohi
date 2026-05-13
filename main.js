@@ -219,14 +219,13 @@ document.addEventListener("DOMContentLoaded", () => {
   async function initFFmpeg() {
     if (ffmpeg) return ffmpeg;
     ffmpeg = new FFmpeg();
-    // 使用国内镜像 npm.elemecdn.com
-    const baseURL = "https://npm.elemecdn.com/@ffmpeg/core@0.12.10/dist/umd";
+    // 使用 unpkg.com 作为备选
+    const baseURL = "https://unpkg.com/@ffmpeg/core@0.12.10/dist/umd";
     await ffmpeg.load({
       coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
-      wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm"),
-    });
-    return ffmpeg;
-  }
+      wasmURL: await toBlobURL(
+        `${baseURL}/ffmpeg-core.wasm`,
+        "application/wasm",
       ),
     });
     return ffmpeg;
