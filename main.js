@@ -211,39 +211,89 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   };
 
-  generateBtn.onclick = () => {
-    const outSize = 360; // 固定为 360px
-    const exportFps = 30; // 固定为 30fps
+  // FFmpeg 实例
+  let ffmpeg = null;
+  const { FFmpeg } = FFmpegWASM;
+  const { fetchFile, toBlobURL } = FFmpegUtil;
+
+  async function initFFmpeg() {
+    if (ffmpeg) return ffmpeg;
+    ffmpeg = new FFmpeg();
+    // 使用国内镜像 npm.elemecdn.com
+    const baseURL = "https://npm.elemecdn.com/@ffmpeg/core@0.12.10/dist/umd";
+    await ffmpeg.load({
+      coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
+      wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm"),
+    });
+    return ffmpeg;
+  }
+      ),
+    });
+    return ffmpeg;
+  }
+
+  generateBtn.onclick = async () => {
+    const outSize = 360;
+    const exportFps = 30;
     const scale = outSize / CANVAS_SIZE;
 
     generateBtn.disabled = true;
-    generateBtn.innerText = `正在渲染...`;
+    generateBtn.innerText = `正在准备 FFmpeg...`;
 
-    const gif = new GIF({
-      workers: 4,
-      width: outSize,
-      height: outSize,
-      workerScript: "gif.worker.js",
-    });
+    try {
+      await initFFmpeg();
 
-    const tempCanvas = document.createElement("canvas");
-    tempCanvas.width = outSize;
-    tempCanvas.height = outSize;
-    const tempCtx = tempCanvas.getContext("2d");
+      generateBtn.innerText = `正在录制视频...`;
 
-    const step = FPS / exportFps;
+      const tempCanvas = document.createElement("canvas");
+      tempCanvas.width = outSize;
+      tempCanvas.height = outSize;
+      const tempCtx = tempCanvas.getContext("2d");
 
-    for (let i = 0; i < TOTAL_GIF_FRAMES; i += step) {
-      const frameIdx = Math.floor(i);
-      tempCtx.save();
-      tempCtx.scale(scale, scale);
-      renderFrame(frameIdx, tempCtx);
-      tempCtx.restore();
-      gif.addFrame(tempCtx, { copy: true, delay: 1000 / exportFps });
-    }
+      // 捕获 Canvas 流
+      const stream = tempCanvas.captureStream(exportFps);
+      const recorder = new MediaRecorder(stream, {
+        mimeType: "video/webm;codecs=vp9",
+        videoBitsPerSecond: 5000000, // 5Mbps
+      });
 
-    gif.on("finished", (blob) => {
-      const url = URL.createObjectURL(blob);
+      const chunks = [];
+      recorder.ondataavailable = (e) => chunks.push(e.data);
+
+      const recordPromise = new Promise((resolve) => {
+        recorder.onstop = () =>
+          resolve(new Blob(chunks, { type: "video/webm" }));
+      });
+
+      recorder.start();
+
+      // 逐帧渲染并录制
+      for (let i = 0; i < TOTAL_GIF_FRAMES; i++) {
+        tempCtx.save();
+        tempCtx.scale(scale, scale);
+        renderFrame(i, tempCtx);
+        tempCtx.restore();
+        // 给 MediaRecorder 一点时间处理每一帧 (虽然 captureStream 是同步的，但在循环中建议微调)
+        await new Promise((r) => setTimeout(r, 10));
+      }
+
+      recorder.stop();
+      const webmBlob = await recordPromise;
+
+      generateBtn.innerText = `正在转换为 GIF...`;
+
+      // 写入 FFmpeg 虚拟文件系统
+      await ffmpeg.writeFile("input.webm", await fetchFile(webmBlob));
+
+      // 执行转换
+      // 用户要求简单：ffmpeg -i input.webm output.gif
+      await ffmpeg.exec(["-i", "input.webm", "output.gif"]);
+
+      // 读取结果
+      const data = await ffmpeg.readFile("output.gif");
+      const gifBlob = new Blob([data.buffer], { type: "image/gif" });
+      const url = URL.createObjectURL(gifBlob);
+
       resultImage.src = url;
       resultImage.style.width = outSize + "px";
       downloadBtn.href = url;
@@ -251,9 +301,12 @@ document.addEventListener("DOMContentLoaded", () => {
       generateBtn.disabled = false;
       generateBtn.innerText = "生成 GIF";
       resultCard.scrollIntoView({ behavior: "smooth" });
-    });
-
-    gif.render();
+    } catch (error) {
+      console.error(error);
+      alert("生成失败，请检查控制台或尝试在本地服务器运行。");
+      generateBtn.disabled = false;
+      generateBtn.innerText = "生成 GIF";
+    }
   };
 
   loadFrames();
