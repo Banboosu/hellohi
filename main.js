@@ -5,17 +5,16 @@ const TEMPLATE_FRAME_COUNT = 5;
 const TOTAL_GIF_FRAMES = 180;
 const FPS = 30;
 
-// 文字位置计算：中心原点(360, 360) + 偏移量
-const TEXT_X = 360 - 81.0; // 279
-const TEXT_Y = 360 - 176.0; // 184
-
 document.addEventListener("DOMContentLoaded", () => {
   const canvas = document.getElementById("canvas");
   const ctx = canvas.getContext("2d");
   const fileInput = document.getElementById("fileInput");
   const generateBtn = document.getElementById("generateBtn");
+  const generateWebpBtn = document.getElementById("generateWebpBtn");
   const toggleAdjustBtn = document.getElementById("toggleAdjust");
   const scaleRange = document.getElementById("scaleRange");
+  const textXRange = document.getElementById("textXRange");
+  const textYRange = document.getElementById("textYRange");
   const resultCard = document.getElementById("resultCard");
   const resultImage = document.getElementById("resultImage");
   const downloadBtn = document.getElementById("downloadBtn");
@@ -33,6 +32,11 @@ document.addEventListener("DOMContentLoaded", () => {
     isDragging: false,
     lastMouseX: 0,
     lastMouseY: 0,
+  };
+
+  let textState = {
+    x: 279,
+    y: 184,
   };
 
   async function loadFrames() {
@@ -144,7 +148,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (alpha > 0) {
       targetCtx.globalAlpha = alpha;
-      targetCtx.fillText(text, TEXT_X, TEXT_Y);
+      targetCtx.fillText(text, textState.x, textState.y);
     }
     targetCtx.restore();
 
@@ -171,6 +175,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
   scaleRange.addEventListener("input", handleScale);
   scaleRange.addEventListener("change", handleScale);
+
+  textXRange.oninput = (e) => {
+    textState.x = parseFloat(e.target.value);
+    if (!animationId) renderFrame(currentGlobalFrame);
+  };
+
+  textYRange.oninput = (e) => {
+    textState.y = parseFloat(e.target.value);
+    if (!animationId) renderFrame(currentGlobalFrame);
+  };
 
   canvas.onmousedown = (e) => {
     if (!isAdjustMode || !userImage) return;
@@ -231,18 +245,26 @@ document.addEventListener("DOMContentLoaded", () => {
     return ffmpeg;
   }
 
-  generateBtn.onclick = async () => {
+  async function handleExport(format) {
+    const isWebp = format === "webp";
     const outSize = 360;
     const exportFps = 30;
     const scale = outSize / CANVAS_SIZE;
+    const activeBtn = isWebp ? generateWebpBtn : generateBtn;
+    const otherBtn = isWebp ? generateBtn : generateWebpBtn;
+    const outputFileName = isWebp ? "output.webp" : "output.gif";
+    const downloadName = isWebp ? "generated.webp" : "generated.gif";
+    const mimeType = isWebp ? "image/webp" : "image/gif";
 
-    generateBtn.disabled = true;
-    generateBtn.innerText = `正在准备 FFmpeg...`;
+    activeBtn.disabled = true;
+    otherBtn.disabled = true;
+    const originalText = activeBtn.innerText;
+    activeBtn.innerText = `正在准备 FFmpeg...`;
 
     try {
       await initFFmpeg();
 
-      generateBtn.innerText = `正在准备渲染...`;
+      activeBtn.innerText = `正在准备渲染...`;
 
       const tempCanvas = document.createElement("canvas");
       tempCanvas.width = outSize;
@@ -256,7 +278,7 @@ document.addEventListener("DOMContentLoaded", () => {
         renderFrame(i, tempCtx);
         tempCtx.restore();
 
-        // 将当前帧转为 Blob 并存入 FFmpeg
+        // 将当前帧轉为 Blob 并存入 FFmpeg
         const blob = await new Promise((resolve) =>
           tempCanvas.toBlob(resolve, "image/png"),
         );
@@ -264,63 +286,85 @@ document.addEventListener("DOMContentLoaded", () => {
         await ffmpeg.writeFile(fileName, await fetchFile(blob));
 
         if (i % 10 === 0) {
-          generateBtn.innerText = `正在导出帧: ${Math.round((i / TOTAL_GIF_FRAMES) * 100)}%`;
+          activeBtn.innerText = `正在导出帧: ${Math.round((i / TOTAL_GIF_FRAMES) * 100)}%`;
         }
       }
 
-      generateBtn.innerText = `正在优化调色板...`;
+      if (isWebp) {
+        activeBtn.innerText = `正在合成 WebP...`;
+        await ffmpeg.exec([
+          "-framerate",
+          "30",
+          "-i",
+          "f_%03d.png",
+          "-loop",
+          "0",
+          "-lossless",
+          "0",
+          "-q:v",
+          "75",
+          "output.webp",
+        ]);
+      } else {
+        activeBtn.innerText = `正在优化调色板...`;
+        // 2. 执行转换：使用高质量调色板生成 GIF
+        await ffmpeg.exec([
+          "-framerate",
+          "30",
+          "-i",
+          "f_%03d.png",
+          "-vf",
+          "palettegen",
+          "palette.png",
+        ]);
 
-      // 2. 执行转换：使用高质量调色板生成 GIF
-      await ffmpeg.exec([
-        "-framerate",
-        "30",
-        "-i",
-        "f_%03d.png",
-        "-vf",
-        "palettegen",
-        "palette.png",
-      ]);
-
-      generateBtn.innerText = `正在合成 GIF...`;
-
-      await ffmpeg.exec([
-        "-framerate",
-        "30",
-        "-i",
-        "f_%03d.png",
-        "-i",
-        "palette.png",
-        "-lavfi",
-        "paletteuse",
-        "output.gif",
-      ]);
+        activeBtn.innerText = `正在合成 GIF...`;
+        await ffmpeg.exec([
+          "-framerate",
+          "30",
+          "-i",
+          "f_%03d.png",
+          "-i",
+          "palette.png",
+          "-lavfi",
+          "paletteuse",
+          "output.gif",
+        ]);
+      }
 
       // 读取结果
-      const data = await ffmpeg.readFile("output.gif");
+      const data = await ffmpeg.readFile(outputFileName);
 
       // 清理临时文件
       for (let i = 0; i < TOTAL_GIF_FRAMES; i++) {
         await ffmpeg.deleteFile(`f_${String(i).padStart(3, "0")}.png`);
       }
-      await ffmpeg.deleteFile("palette.png");
+      if (!isWebp) {
+        await ffmpeg.deleteFile("palette.png");
+      }
 
-      const gifBlob = new Blob([data.buffer], { type: "image/gif" });
-      const url = URL.createObjectURL(gifBlob);
+      const blob = new Blob([data.buffer], { type: mimeType });
+      const url = URL.createObjectURL(blob);
 
       resultImage.src = url;
       resultImage.style.width = outSize + "px";
       downloadBtn.href = url;
+      downloadBtn.download = downloadName;
+      downloadBtn.innerText = `下载 ${format.toUpperCase()}`;
       resultCard.style.display = "block";
-      generateBtn.disabled = false;
-      generateBtn.innerText = "生成 GIF";
       resultCard.scrollIntoView({ behavior: "smooth" });
     } catch (error) {
       console.error(error);
       alert("生成失败，请检查控制台或尝试在本地服务器运行。");
-      generateBtn.disabled = false;
-      generateBtn.innerText = "生成 GIF";
+    } finally {
+      activeBtn.disabled = false;
+      otherBtn.disabled = false;
+      activeBtn.innerText = originalText;
     }
-  };
+  }
+
+  generateBtn.onclick = () => handleExport("gif");
+  generateWebpBtn.onclick = () => handleExport("webp");
 
   loadFrames();
 });
