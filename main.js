@@ -242,54 +242,68 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       await initFFmpeg();
 
-      generateBtn.innerText = `正在录制视频...`;
+      generateBtn.innerText = `正在准备渲染...`;
 
       const tempCanvas = document.createElement("canvas");
       tempCanvas.width = outSize;
       tempCanvas.height = outSize;
       const tempCtx = tempCanvas.getContext("2d");
 
-      // 捕获 Canvas 流
-      const stream = tempCanvas.captureStream(exportFps);
-      const recorder = new MediaRecorder(stream, {
-        mimeType: "video/webm;codecs=vp9",
-        videoBitsPerSecond: 5000000, // 5Mbps
-      });
-
-      const chunks = [];
-      recorder.ondataavailable = (e) => chunks.push(e.data);
-
-      const recordPromise = new Promise((resolve) => {
-        recorder.onstop = () =>
-          resolve(new Blob(chunks, { type: "video/webm" }));
-      });
-
-      recorder.start();
-
-      // 逐帧渲染并录制
+      // 1. 逐帧渲染并直接保存为图片到 FFmpeg 虚拟文件系统
       for (let i = 0; i < TOTAL_GIF_FRAMES; i++) {
         tempCtx.save();
         tempCtx.scale(scale, scale);
         renderFrame(i, tempCtx);
         tempCtx.restore();
-        // 给 MediaRecorder 一点时间处理每一帧 (虽然 captureStream 是同步的，但在循环中建议微调)
-        await new Promise((r) => setTimeout(r, 10));
+
+        // 将当前帧转为 Blob 并存入 FFmpeg
+        const blob = await new Promise((resolve) =>
+          tempCanvas.toBlob(resolve, "image/png"),
+        );
+        const fileName = `f_${String(i).padStart(3, "0")}.png`;
+        await ffmpeg.writeFile(fileName, await fetchFile(blob));
+
+        if (i % 10 === 0) {
+          generateBtn.innerText = `正在导出帧: ${Math.round((i / TOTAL_GIF_FRAMES) * 100)}%`;
+        }
       }
 
-      recorder.stop();
-      const webmBlob = await recordPromise;
+      generateBtn.innerText = `正在优化调色板...`;
 
-      generateBtn.innerText = `正在转换为 GIF...`;
+      // 2. 执行转换：使用高质量调色板生成 GIF
+      await ffmpeg.exec([
+        "-framerate",
+        "30",
+        "-i",
+        "f_%03d.png",
+        "-vf",
+        "palettegen",
+        "palette.png",
+      ]);
 
-      // 写入 FFmpeg 虚拟文件系统
-      await ffmpeg.writeFile("input.webm", await fetchFile(webmBlob));
+      generateBtn.innerText = `正在合成 GIF...`;
 
-      // 执行转换
-      // 用户要求简单：ffmpeg -i input.webm output.gif
-      await ffmpeg.exec(["-i", "input.webm", "output.gif"]);
+      await ffmpeg.exec([
+        "-framerate",
+        "30",
+        "-i",
+        "f_%03d.png",
+        "-i",
+        "palette.png",
+        "-lavfi",
+        "paletteuse",
+        "output.gif",
+      ]);
 
       // 读取结果
       const data = await ffmpeg.readFile("output.gif");
+
+      // 清理临时文件
+      for (let i = 0; i < TOTAL_GIF_FRAMES; i++) {
+        await ffmpeg.deleteFile(`f_${String(i).padStart(3, "0")}.png`);
+      }
+      await ffmpeg.deleteFile("palette.png");
+
       const gifBlob = new Blob([data.buffer], { type: "image/gif" });
       const url = URL.createObjectURL(gifBlob);
 

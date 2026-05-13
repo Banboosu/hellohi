@@ -82,11 +82,11 @@
             </main>
         </div>
 
-        <!-- 引入 coi-serviceworker 以支持 GitHub Pages 上的 Cross-Origin Isolation -->
-        <script src="https://unpkg.com/coi-serviceworker@0.1.7/coi-serviceworker.min.js"></script>
+        <!-- 必须本地引用以确保 Service Worker 作用域正确 -->
+        <script src="coi-serviceworker.min.js"></script>
 
-        <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.min.js"></script>
-        <script src="https://unpkg.com/@ffmpeg/util@0.12.1/dist/umd/index.js"></script>
+        <script src="ffmpeg.min.js"></script>
+        <script src="ffmpeg-util.js"></script>
         <script src="main.js"></script>
     </body>
 </html>
