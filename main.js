@@ -214,7 +214,6 @@ document.addEventListener("DOMContentLoaded", () => {
   generateBtn.onclick = () => {
     const outSize = 360; // 固定为 360px
     const exportFps = 30; // 固定为 30fps
-    const quality = 10; // 默认使用标准画质
     const scale = outSize / CANVAS_SIZE;
 
     generateBtn.disabled = true;
@@ -222,11 +221,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const gif = new GIF({
       workers: 4,
-      quality: quality,
       width: outSize,
       height: outSize,
       workerScript: "gif.worker.js",
-      dither: "FloydSteinberg",
     });
 
     const tempCanvas = document.createElement("canvas");
