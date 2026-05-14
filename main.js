@@ -10,7 +10,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const ctx = canvas.getContext("2d");
   const fileInput = document.getElementById("fileInput");
   const generateBtn = document.getElementById("generateBtn");
-  const generateWebpBtn = document.getElementById("generateWebpBtn");
   const toggleAdjustBtn = document.getElementById("toggleAdjust");
   const scaleRange = document.getElementById("scaleRange");
   const textXRange = document.getElementById("textXRange");
@@ -25,7 +24,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let animationId = null;
 
   let isAdjustMode = false;
-  let imageState = {
+  const imageState = {
     x: 0,
     y: 0,
     scale: 1.0,
@@ -35,7 +34,7 @@ document.addEventListener("DOMContentLoaded", () => {
     lastPointerY: 0,
   };
 
-  let textState = {
+  const textState = {
     x: 279,
     y: 184,
   };
@@ -70,19 +69,12 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       animationId = requestAnimationFrame(animate);
     }
+
     animationId = requestAnimationFrame(animate);
   }
 
-  /**
-   * 计算透明度函数
-   * @param {number} frame 当前帧 (0-indexed)
-   * @param {number} start 开始帧 (1-indexed)
-   * @param {number} inEnd 淡入结束帧 (1-indexed)
-   * @param {number} outStart 淡出开始帧 (1-indexed)
-   * @param {number} end 结束帧 (1-indexed)
-   */
   function calculateAlpha(frameIdx, start, inEnd, outStart, end) {
-    const frame = frameIdx + 1; // 转为 1-indexed 匹配需求
+    const frame = frameIdx + 1;
     if (frame < start || frame > end) return 0;
     if (frame <= inEnd) {
       return (frame - start + 1) / (inEnd - start + 1);
@@ -97,7 +89,6 @@ document.addEventListener("DOMContentLoaded", () => {
     targetCtx.fillStyle = "#ffffff";
     targetCtx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
 
-    // 1. 绘制用户图片
     if (userImage) {
       targetCtx.save();
       const baseScale = Math.min(
@@ -119,30 +110,23 @@ document.addEventListener("DOMContentLoaded", () => {
       targetCtx.restore();
     }
 
-    // 2. 绘制文字动画
     targetCtx.save();
     targetCtx.textAlign = "center";
     targetCtx.textBaseline = "middle";
     targetCtx.fillStyle = "#000000";
-    // 优先使用思源黑体 Medium
     targetCtx.font =
       "500 73px 'Source Han Sans SC', 'Source Han Sans CN', 'Noto Sans CJK SC', sans-serif";
 
     let alpha = 0;
     let text = "";
 
-    // Sequence 1: "HELLO!" (1-61)
     if (globalIdx < 61) {
       alpha = calculateAlpha(globalIdx, 1, 8, 55, 61);
       text = "HELLO!";
-    }
-    // Sequence 2: "HELLO!" (62-122)
-    else if (globalIdx < 122) {
+    } else if (globalIdx < 122) {
       alpha = calculateAlpha(globalIdx, 62, 69, 116, 122);
       text = "HELLO!";
-    }
-    // Sequence 3: "HI!" (123-180)
-    else {
+    } else {
       alpha = calculateAlpha(globalIdx, 123, 130, 175, 180);
       text = "HI!";
     }
@@ -153,14 +137,12 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     targetCtx.restore();
 
-    // 3. 绘制模板图层 (5帧循环)
     const templateIdx = globalIdx % TEMPLATE_FRAME_COUNT;
     if (frames[templateIdx]) {
       targetCtx.drawImage(frames[templateIdx], 0, 0, CANVAS_SIZE, CANVAS_SIZE);
     }
   }
 
-  // 交互逻辑
   function updateAdjustModeUI() {
     toggleAdjustBtn.innerText = `调整模式: ${isAdjustMode ? "开" : "关"}`;
     toggleAdjustBtn.style.backgroundColor = isAdjustMode ? "#000" : "#fff";
@@ -205,8 +187,7 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   const handleScale = (e) => {
-    const val = parseFloat(e.target.value);
-    imageState.scale = val / 100;
+    imageState.scale = parseFloat(e.target.value) / 100;
     if (!animationId) renderFrame(currentGlobalFrame);
   };
 
@@ -250,24 +231,23 @@ document.addEventListener("DOMContentLoaded", () => {
 
   fileInput.onchange = (e) => {
     const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const img = new Image();
-        img.onload = () => {
-          userImage = img;
-          imageState.x = 0;
-          imageState.y = 0;
-          currentGlobalFrame = 0;
-          if (!animationId) startPreview();
-        };
-        img.src = event.target.result;
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        userImage = img;
+        imageState.x = 0;
+        imageState.y = 0;
+        currentGlobalFrame = 0;
+        if (!animationId) startPreview();
       };
-      reader.readAsDataURL(file);
-    }
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
   };
 
-  // FFmpeg 实例
   let ffmpeg = null;
   const { FFmpeg } = FFmpegWASM;
   const { fetchFile, toBlobURL } = FFmpegUtil;
@@ -275,7 +255,6 @@ document.addEventListener("DOMContentLoaded", () => {
   async function initFFmpeg() {
     if (ffmpeg) return ffmpeg;
     ffmpeg = new FFmpeg();
-    // 使用 unpkg.com 作为备选
     const baseURL = "https://unpkg.com/@ffmpeg/core@0.12.10/dist/umd";
     await ffmpeg.load({
       coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
@@ -287,40 +266,33 @@ document.addEventListener("DOMContentLoaded", () => {
     return ffmpeg;
   }
 
-  async function handleExport(format) {
-    const isWebp = format === "webp";
+  async function handleExport() {
     const outSize = 360;
-    const exportFps = 30;
     const scale = outSize / CANVAS_SIZE;
-    const activeBtn = isWebp ? generateWebpBtn : generateBtn;
-    const otherBtn = isWebp ? generateBtn : generateWebpBtn;
-    const outputFileName = isWebp ? "output.webp" : "output.gif";
-    const downloadName = isWebp ? "generated.webp" : "generated.gif";
-    const mimeType = isWebp ? "image/webp" : "image/gif";
+    const outputFileName = "output.gif";
+    const downloadName = "generated.gif";
+    const mimeType = "image/gif";
 
-    activeBtn.disabled = true;
-    otherBtn.disabled = true;
-    const originalText = activeBtn.innerText;
-    activeBtn.innerText = `正在准备 FFmpeg...`;
+    generateBtn.disabled = true;
+    const originalText = generateBtn.innerText;
+    generateBtn.innerText = "正在准备 FFmpeg...";
 
     try {
       await initFFmpeg();
 
-      activeBtn.innerText = `正在准备渲染...`;
+      generateBtn.innerText = "正在准备渲染...";
 
       const tempCanvas = document.createElement("canvas");
       tempCanvas.width = outSize;
       tempCanvas.height = outSize;
       const tempCtx = tempCanvas.getContext("2d");
 
-      // 1. 逐帧渲染并直接保存为图片到 FFmpeg 虚拟文件系统
       for (let i = 0; i < TOTAL_GIF_FRAMES; i++) {
         tempCtx.save();
         tempCtx.scale(scale, scale);
         renderFrame(i, tempCtx);
         tempCtx.restore();
 
-        // 将当前帧轉为 Blob 并存入 FFmpeg
         const blob = await new Promise((resolve) =>
           tempCanvas.toBlob(resolve, "image/png"),
         );
@@ -328,85 +300,61 @@ document.addEventListener("DOMContentLoaded", () => {
         await ffmpeg.writeFile(fileName, await fetchFile(blob));
 
         if (i % 10 === 0) {
-          activeBtn.innerText = `正在导出帧: ${Math.round((i / TOTAL_GIF_FRAMES) * 100)}%`;
+          generateBtn.innerText = `正在导出帧: ${Math.round((i / TOTAL_GIF_FRAMES) * 100)}%`;
         }
       }
 
-      if (isWebp) {
-        activeBtn.innerText = `正在合成 WebP...`;
-        await ffmpeg.exec([
-          "-framerate",
-          "30",
-          "-i",
-          "f_%03d.png",
-          "-loop",
-          "0",
-          "-lossless",
-          "0",
-          "-q:v",
-          "75",
-          "output.webp",
-        ]);
-      } else {
-        activeBtn.innerText = `正在优化调色板...`;
-        // 2. 执行转换：使用高质量调色板生成 GIF
-        await ffmpeg.exec([
-          "-framerate",
-          "30",
-          "-i",
-          "f_%03d.png",
-          "-vf",
-          "palettegen=max_colors=256:stats_mode=diff",
-          "palette.png",
-        ]);
+      generateBtn.innerText = "正在优化调色板...";
+      await ffmpeg.exec([
+        "-framerate",
+        "30",
+        "-i",
+        "f_%03d.png",
+        "-vf",
+        "palettegen=max_colors=256:stats_mode=diff",
+        "palette.png",
+      ]);
 
-        activeBtn.innerText = `正在合成 GIF...`;
-        await ffmpeg.exec([
-          "-framerate",
-          "30",
-          "-i",
-          "f_%03d.png",
-          "-i",
-          "palette.png",
-          "-lavfi",
-          "paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle",
-          "output.gif",
-        ]);
-      }
+      generateBtn.innerText = "正在合成 GIF...";
+      await ffmpeg.exec([
+        "-framerate",
+        "30",
+        "-i",
+        "f_%03d.png",
+        "-i",
+        "palette.png",
+        "-lavfi",
+        "paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle",
+        "output.gif",
+      ]);
 
-      // 读取结果
       const data = await ffmpeg.readFile(outputFileName);
 
-      // 清理临时文件
       for (let i = 0; i < TOTAL_GIF_FRAMES; i++) {
         await ffmpeg.deleteFile(`f_${String(i).padStart(3, "0")}.png`);
       }
-      if (!isWebp) {
-        await ffmpeg.deleteFile("palette.png");
-      }
+      await ffmpeg.deleteFile("palette.png");
 
       const blob = new Blob([data.buffer], { type: mimeType });
       const url = URL.createObjectURL(blob);
 
       resultImage.src = url;
-      resultImage.style.width = outSize + "px";
+      resultImage.style.width = `${outSize}px`;
       downloadBtn.href = url;
       downloadBtn.download = downloadName;
-      downloadBtn.innerText = `下载 ${format.toUpperCase()}`;
+      downloadBtn.innerText = "下载 GIF";
       resultCard.style.display = "block";
       resultCard.scrollIntoView({ behavior: "smooth" });
     } catch (error) {
       console.error(error);
       alert("生成失败，请检查控制台或尝试在本地服务器运行。");
     } finally {
-      activeBtn.disabled = false;
-      otherBtn.disabled = false;
-      activeBtn.innerText = originalText;
+      generateBtn.disabled = false;
+      generateBtn.innerText = originalText;
     }
   }
 
-  generateBtn.onclick = () => handleExport("gif");
-  generateWebpBtn.onclick = () => handleExport("webp");
+  generateBtn.onclick = () => handleExport();
 
   updateAdjustModeUI();
   loadFrames();

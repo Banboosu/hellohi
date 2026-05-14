@@ -3,10 +3,10 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>GIF Generator</title>
+        <title>摇摆生姜生成器</title>
+        <link rel="icon" type="image/png" href="icon.png" />
         <link rel="stylesheet" href="style.css" />
         <style>
-            /* 预载入字体（如果本地有的话） */
             @font-face {
                 font-family: "Source Han Sans SC";
                 src:
@@ -23,19 +23,14 @@
             </header>
 
             <main>
-                <!--<div
-                    class="tip"
-                    style="margin-bottom: 1rem; font-size: 0.9rem; color: #666"
-                >
-                    提示：如果无法生成 GIF，请使用本地服务器运行。
-                </div>-->
                 <div class="card">
                     <div class="preview-area">
                         <canvas id="canvas" width="720" height="720"></canvas>
                     </div>
-                    <div class="controls">
-                        <div class="upload-box">
-                            <label for="fileInput" class="btn">选择图片</label>
+
+                    <div class="controls controls-top">
+                        <div class="upload-box action-item">
+                            <label for="fileInput" class="btn btn-block">选择图片</label>
                             <input
                                 type="file"
                                 id="fileInput"
@@ -43,19 +38,15 @@
                                 style="display: none"
                             />
                         </div>
-                        <button id="toggleAdjust" class="btn">
+                        <button id="toggleAdjust" class="btn btn-block action-item">
                             调整模式: 关
                         </button>
-                        <div
-                            class="control-group"
-                            style="
-                                display: flex;
-                                align-items: center;
-                                gap: 0.5rem;
-                                margin: 0 1rem;
-                            "
-                        >
-                            <label for="scaleRange">缩放:</label>
+                        <button id="generateBtn" class="btn btn-block action-item">生成 GIF</button>
+                    </div>
+
+                    <div class="control-panel">
+                        <div class="control-group">
+                            <label for="scaleRange">缩放</label>
                             <input
                                 type="range"
                                 id="scaleRange"
@@ -64,16 +55,8 @@
                                 value="100"
                             />
                         </div>
-                        <div
-                            class="control-group"
-                            style="
-                                display: flex;
-                                align-items: center;
-                                gap: 0.5rem;
-                                margin: 0 1rem;
-                            "
-                        >
-                            <label>文字 X:</label>
+                        <div class="control-group">
+                            <label for="textXRange">文字 X</label>
                             <input
                                 type="range"
                                 id="textXRange"
@@ -81,7 +64,9 @@
                                 max="720"
                                 value="279"
                             />
-                            <label>文字 Y:</label>
+                        </div>
+                        <div class="control-group">
+                            <label for="textYRange">文字 Y</label>
                             <input
                                 type="range"
                                 id="textYRange"
@@ -90,10 +75,6 @@
                                 value="184"
                             />
                         </div>
-                        <button id="generateBtn" class="btn">生成 GIF</button>
-                        <button id="generateWebpBtn" class="btn">
-                            生成 WebP
-                        </button>
                     </div>
                 </div>
 
@@ -102,14 +83,14 @@
                     <div class="result-area">
                         <img id="resultImage" alt="Generated Result" />
                     </div>
-                    <div class="controls">
-                        <a id="downloadBtn" class="btn" download="generated.gif"
+                    <div class="controls result-controls">
+                        <a id="downloadBtn" class="btn btn-block" download="generated.gif"
                             >下载文件</a
                         >
                         <a
                             href="https://docsmall.com/gif-compress"
                             target="_blank"
-                            style="margin-left: 12px; font-size: 20px"
+                            class="result-link"
                             >建议自行压缩一下</a
                         >
                     </div>
@@ -117,9 +98,7 @@
             </main>
         </div>
 
-        <!-- 必须本地引用以确保 Service Worker 作用域正确 -->
         <script src="coi-serviceworker.min.js"></script>
-
         <script src="ffmpeg.min.js"></script>
         <script src="ffmpeg-util.js"></script>
         <script src="main.js"></script>
