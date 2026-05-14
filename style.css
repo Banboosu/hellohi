@@ -88,9 +88,20 @@ canvas {
     line-height: 1.2;
 }
 
-.control-group input[type="range"] {
+.control-group input[type="range"],
+.control-group select {
     width: 100%;
     margin: 0;
+}
+
+.control-group select {
+    min-height: 44px;
+    border: 2px solid #000000;
+    background-color: #ffffff;
+    color: #000000;
+    padding: 0 0.75rem;
+    font-size: 1rem;
+    box-sizing: border-box;
 }
 
 .btn {
