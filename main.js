@@ -30,8 +30,9 @@ document.addEventListener("DOMContentLoaded", () => {
     y: 0,
     scale: 1.0,
     isDragging: false,
-    lastMouseX: 0,
-    lastMouseY: 0,
+    activePointerId: null,
+    lastPointerX: 0,
+    lastPointerY: 0,
   };
 
   let textState = {
@@ -160,11 +161,47 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // 交互逻辑
-  toggleAdjustBtn.onclick = () => {
-    isAdjustMode = !isAdjustMode;
+  function updateAdjustModeUI() {
     toggleAdjustBtn.innerText = `调整模式: ${isAdjustMode ? "开" : "关"}`;
     toggleAdjustBtn.style.backgroundColor = isAdjustMode ? "#000" : "#fff";
     toggleAdjustBtn.style.color = isAdjustMode ? "#fff" : "#000";
+    canvas.style.touchAction = isAdjustMode ? "none" : "auto";
+  }
+
+  function beginDrag(pointerId, clientX, clientY) {
+    if (!isAdjustMode || !userImage) return;
+    imageState.isDragging = true;
+    imageState.activePointerId = pointerId;
+    imageState.lastPointerX = clientX;
+    imageState.lastPointerY = clientY;
+  }
+
+  function moveDrag(pointerId, clientX, clientY) {
+    if (!imageState.isDragging || imageState.activePointerId !== pointerId) return;
+    const rect = canvas.getBoundingClientRect();
+    const canvasScale = CANVAS_SIZE / rect.width;
+    const dx = (clientX - imageState.lastPointerX) * canvasScale;
+    const dy = (clientY - imageState.lastPointerY) * canvasScale;
+    imageState.x += dx;
+    imageState.y += dy;
+    imageState.lastPointerX = clientX;
+    imageState.lastPointerY = clientY;
+    if (!animationId) renderFrame(currentGlobalFrame);
+  }
+
+  function endDrag(pointerId) {
+    if (imageState.activePointerId !== pointerId) return;
+    imageState.isDragging = false;
+    imageState.activePointerId = null;
+  }
+
+  toggleAdjustBtn.onclick = () => {
+    isAdjustMode = !isAdjustMode;
+    if (!isAdjustMode) {
+      imageState.isDragging = false;
+      imageState.activePointerId = null;
+    }
+    updateAdjustModeUI();
   };
 
   const handleScale = (e) => {
@@ -186,25 +223,30 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!animationId) renderFrame(currentGlobalFrame);
   };
 
-  canvas.onmousedown = (e) => {
+  canvas.addEventListener("pointerdown", (e) => {
     if (!isAdjustMode || !userImage) return;
-    imageState.isDragging = true;
-    imageState.lastMouseX = e.clientX;
-    imageState.lastMouseY = e.clientY;
-  };
-  window.onmousemove = (e) => {
+    beginDrag(e.pointerId, e.clientX, e.clientY);
+    canvas.setPointerCapture?.(e.pointerId);
+    e.preventDefault();
+  });
+
+  canvas.addEventListener("pointermove", (e) => {
     if (!imageState.isDragging) return;
-    const rect = canvas.getBoundingClientRect();
-    const canvasScale = CANVAS_SIZE / rect.width;
-    const dx = (e.clientX - imageState.lastMouseX) * canvasScale;
-    const dy = (e.clientY - imageState.lastMouseY) * canvasScale;
-    imageState.x += dx;
-    imageState.y += dy;
-    imageState.lastMouseX = e.clientX;
-    imageState.lastMouseY = e.clientY;
-    if (!animationId) renderFrame(currentGlobalFrame);
-  };
-  window.onmouseup = () => (imageState.isDragging = false);
+    moveDrag(e.pointerId, e.clientX, e.clientY);
+    e.preventDefault();
+  });
+
+  canvas.addEventListener("pointerup", (e) => {
+    endDrag(e.pointerId);
+  });
+
+  canvas.addEventListener("pointercancel", (e) => {
+    endDrag(e.pointerId);
+  });
+
+  window.addEventListener("pointerup", (e) => {
+    endDrag(e.pointerId);
+  });
 
   fileInput.onchange = (e) => {
     const file = e.target.files[0];
@@ -366,5 +408,6 @@ document.addEventListener("DOMContentLoaded", () => {
   generateBtn.onclick = () => handleExport("gif");
   generateWebpBtn.onclick = () => handleExport("webp");
 
+  updateAdjustModeUI();
   loadFrames();
 });
