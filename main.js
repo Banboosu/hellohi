@@ -14,6 +14,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const scaleRange = document.getElementById("scaleRange");
   const textXRange = document.getElementById("textXRange");
   const textYRange = document.getElementById("textYRange");
+  const textEnabledSelect = document.getElementById("textEnabledSelect");
   const textColorSelect = document.getElementById("textColorSelect");
   const resultCard = document.getElementById("resultCard");
   const resultImage = document.getElementById("resultImage");
@@ -39,6 +40,7 @@ document.addEventListener("DOMContentLoaded", () => {
     x: 279,
     y: 184,
     color: "#000000",
+    enabled: true,
   };
 
   async function loadFrames() {
@@ -133,7 +135,7 @@ document.addEventListener("DOMContentLoaded", () => {
       text = "HI!";
     }
 
-    if (alpha > 0) {
+    if (textState.enabled && alpha > 0) {
       targetCtx.globalAlpha = alpha;
       targetCtx.fillText(text, textState.x, textState.y);
     }
@@ -152,6 +154,10 @@ document.addEventListener("DOMContentLoaded", () => {
     canvas.style.touchAction = isAdjustMode ? "none" : "auto";
   }
 
+  function updateTextControlsUI() {
+    textColorSelect.disabled = !textState.enabled;
+  }
+
   function beginDrag(pointerId, clientX, clientY) {
     if (!isAdjustMode || !userImage) return;
     imageState.isDragging = true;
@@ -161,8 +167,9 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function moveDrag(pointerId, clientX, clientY) {
-    if (!imageState.isDragging || imageState.activePointerId !== pointerId)
+    if (!imageState.isDragging || imageState.activePointerId !== pointerId) {
       return;
+    }
     const rect = canvas.getBoundingClientRect();
     const canvasScale = CANVAS_SIZE / rect.width;
     const dx = (clientX - imageState.lastPointerX) * canvasScale;
@@ -204,6 +211,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
   textYRange.oninput = (e) => {
     textState.y = parseFloat(e.target.value);
+    if (!animationId) renderFrame(currentGlobalFrame);
+  };
+
+  textEnabledSelect.onchange = (e) => {
+    textState.enabled = e.target.value === "on";
+    updateTextControlsUI();
     if (!animationId) renderFrame(currentGlobalFrame);
   };
 
@@ -365,5 +378,6 @@ document.addEventListener("DOMContentLoaded", () => {
   generateBtn.onclick = () => handleExport();
 
   updateAdjustModeUI();
+  updateTextControlsUI();
   loadFrames();
 });
