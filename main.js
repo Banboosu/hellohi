@@ -356,7 +356,7 @@ document.addEventListener("DOMContentLoaded", () => {
           "-i",
           "f_%03d.png",
           "-vf",
-          "palettegen",
+          "palettegen=max_colors=256:stats_mode=diff",
           "palette.png",
         ]);
 
@@ -369,7 +369,7 @@ document.addEventListener("DOMContentLoaded", () => {
           "-i",
           "palette.png",
           "-lavfi",
-          "paletteuse",
+          "paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle",
           "output.gif",
         ]);
       }
