@@ -32,10 +32,11 @@ header h1 {
 
 .preview-area,
 .result-area {
-    width: 100%;
+    width: fit-content;
+    max-width: 100%;
     display: flex;
     justify-content: center;
-    margin-bottom: 1.25rem;
+    margin: 0 auto 1.25rem;
     border: 2px solid #000000;
     background-color: #f0f0f0;
     overflow: hidden;
@@ -191,6 +192,15 @@ h2 {
 }
 
 @media (min-width: 641px) {
+    .container {
+        max-width: 720px;
+    }
+
+    .preview-area,
+    .result-area {
+        max-width: 640px;
+    }
+
     .control-panel {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
