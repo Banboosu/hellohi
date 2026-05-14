@@ -159,7 +159,8 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function moveDrag(pointerId, clientX, clientY) {
-    if (!imageState.isDragging || imageState.activePointerId !== pointerId) return;
+    if (!imageState.isDragging || imageState.activePointerId !== pointerId)
+      return;
     const rect = canvas.getBoundingClientRect();
     const canvasScale = CANVAS_SIZE / rect.width;
     const dx = (clientX - imageState.lastPointerX) * canvasScale;
@@ -267,7 +268,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   async function handleExport() {
-    const outSize = 360;
+    const outSize = 260;
     const scale = outSize / CANVAS_SIZE;
     const outputFileName = "output.gif";
     const downloadName = "generated.gif";
