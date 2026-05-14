@@ -14,6 +14,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const scaleRange = document.getElementById("scaleRange");
   const textXRange = document.getElementById("textXRange");
   const textYRange = document.getElementById("textYRange");
+  const textColorSelect = document.getElementById("textColorSelect");
   const resultCard = document.getElementById("resultCard");
   const resultImage = document.getElementById("resultImage");
   const downloadBtn = document.getElementById("downloadBtn");
@@ -37,6 +38,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const textState = {
     x: 279,
     y: 184,
+    color: "#000000",
   };
 
   async function loadFrames() {
@@ -113,7 +115,7 @@ document.addEventListener("DOMContentLoaded", () => {
     targetCtx.save();
     targetCtx.textAlign = "center";
     targetCtx.textBaseline = "middle";
-    targetCtx.fillStyle = "#000000";
+    targetCtx.fillStyle = textState.color;
     targetCtx.font =
       "500 73px 'Source Han Sans SC', 'Source Han Sans CN', 'Noto Sans CJK SC', sans-serif";
 
@@ -202,6 +204,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
   textYRange.oninput = (e) => {
     textState.y = parseFloat(e.target.value);
+    if (!animationId) renderFrame(currentGlobalFrame);
+  };
+
+  textColorSelect.onchange = (e) => {
+    textState.color = e.target.value;
     if (!animationId) renderFrame(currentGlobalFrame);
   };
 
