@@ -325,10 +325,20 @@ document.addEventListener("DOMContentLoaded", () => {
         renderFrame(i, tempCtx);
         tempCtx.restore();
 
-        const blob = await new Promise((resolve) =>
-          tempCanvas.toBlob(resolve, "image/png"),
-        );
-        const fileName = `f_${String(i).padStart(3, "0")}.png`;
+        const blob = await new Promise((resolve, reject) => {
+          tempCanvas.toBlob(
+            (result) => {
+              if (!result) {
+                reject(new Error("导出帧失败"));
+                return;
+              }
+              resolve(result);
+            },
+            "image/jpeg",
+            0.88,
+          );
+        });
+        const fileName = `f_${String(i).padStart(3, "0")}.jpg`;
         await ffmpeg.writeFile(fileName, await fetchFile(blob));
 
         if (i % 10 === 0 || i === frameCount - 1) {
@@ -341,7 +351,7 @@ document.addEventListener("DOMContentLoaded", () => {
         "-framerate",
         "30",
         "-i",
-        "f_%03d.png",
+        "f_%03d.jpg",
         "-vf",
         "palettegen=max_colors=256:stats_mode=diff",
         "palette.png",
@@ -352,7 +362,7 @@ document.addEventListener("DOMContentLoaded", () => {
         "-framerate",
         "30",
         "-i",
-        "f_%03d.png",
+        "f_%03d.jpg",
         "-i",
         "palette.png",
         "-lavfi",
@@ -363,7 +373,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const data = await ffmpeg.readFile(outputFileName);
 
       for (let i = 0; i < frameCount; i++) {
-        await ffmpeg.deleteFile(`f_${String(i).padStart(3, "0")}.png`);
+        await ffmpeg.deleteFile(`f_${String(i).padStart(3, "0")}.jpg`);
       }
       await ffmpeg.deleteFile("palette.png");
 
