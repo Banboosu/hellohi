@@ -282,15 +282,22 @@ document.addEventListener("DOMContentLoaded", () => {
   let ffmpeg = null;
   const { FFmpeg } = FFmpegWASM;
   const { fetchFile, toBlobURL } = FFmpegUtil;
+  const FFMPEG_CORE_BASE_URL =
+    "https://registry.npmmirror.com/@ffmpeg/core/0.12.10/files/dist/umd";
+  const EXPORT_FRAME_MIME_TYPE = "image/jpeg";
+  const EXPORT_FRAME_EXTENSION = "jpg";
+  const EXPORT_FRAME_QUALITY = 0.88;
 
   async function initFFmpeg() {
     if (ffmpeg) return ffmpeg;
     ffmpeg = new FFmpeg();
-    const baseURL = "https://unpkg.com/@ffmpeg/core@0.12.10/dist/umd";
     await ffmpeg.load({
-      coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
+      coreURL: await toBlobURL(
+        `${FFMPEG_CORE_BASE_URL}/ffmpeg-core.js`,
+        "text/javascript",
+      ),
       wasmURL: await toBlobURL(
-        `${baseURL}/ffmpeg-core.wasm`,
+        `${FFMPEG_CORE_BASE_URL}/ffmpeg-core.wasm`,
         "application/wasm",
       ),
     });
@@ -325,10 +332,20 @@ document.addEventListener("DOMContentLoaded", () => {
         renderFrame(i, tempCtx);
         tempCtx.restore();
 
-        const blob = await new Promise((resolve) =>
-          tempCanvas.toBlob(resolve, "image/png"),
-        );
-        const fileName = `f_${String(i).padStart(3, "0")}.png`;
+        const blob = await new Promise((resolve, reject) => {
+          tempCanvas.toBlob(
+            (result) => {
+              if (!result) {
+                reject(new Error("导出帧失败"));
+                return;
+              }
+              resolve(result);
+            },
+            EXPORT_FRAME_MIME_TYPE,
+            EXPORT_FRAME_QUALITY,
+          );
+        });
+        const fileName = `f_${String(i).padStart(3, "0")}.${EXPORT_FRAME_EXTENSION}`;
         await ffmpeg.writeFile(fileName, await fetchFile(blob));
 
         if (i % 10 === 0 || i === frameCount - 1) {
@@ -341,7 +358,7 @@ document.addEventListener("DOMContentLoaded", () => {
         "-framerate",
         "30",
         "-i",
-        "f_%03d.png",
+        `f_%03d.${EXPORT_FRAME_EXTENSION}`,
         "-vf",
         "palettegen=max_colors=256:stats_mode=diff",
         "palette.png",
@@ -352,7 +369,7 @@ document.addEventListener("DOMContentLoaded", () => {
         "-framerate",
         "30",
         "-i",
-        "f_%03d.png",
+        `f_%03d.${EXPORT_FRAME_EXTENSION}`,
         "-i",
         "palette.png",
         "-lavfi",
@@ -363,7 +380,9 @@ document.addEventListener("DOMContentLoaded", () => {
       const data = await ffmpeg.readFile(outputFileName);
 
       for (let i = 0; i < frameCount; i++) {
-        await ffmpeg.deleteFile(`f_${String(i).padStart(3, "0")}.png`);
+        await ffmpeg.deleteFile(
+          `f_${String(i).padStart(3, "0")}.${EXPORT_FRAME_EXTENSION}`,
+        );
       }
       await ffmpeg.deleteFile("palette.png");
 
