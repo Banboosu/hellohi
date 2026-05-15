@@ -11,11 +11,11 @@ document.addEventListener("DOMContentLoaded", () => {
   const fileInput = document.getElementById("fileInput");
   const generateBtn = document.getElementById("generateBtn");
   const toggleAdjustBtn = document.getElementById("toggleAdjust");
+  const toggleTextEnabledBtn = document.getElementById("toggleTextEnabled");
+  const toggleTextColorBtn = document.getElementById("toggleTextColor");
   const scaleRange = document.getElementById("scaleRange");
   const textXRange = document.getElementById("textXRange");
   const textYRange = document.getElementById("textYRange");
-  const textEnabledSelect = document.getElementById("textEnabledSelect");
-  const textColorSelect = document.getElementById("textColorSelect");
   const resultCard = document.getElementById("resultCard");
   const resultImage = document.getElementById("resultImage");
   const downloadBtn = document.getElementById("downloadBtn");
@@ -29,7 +29,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const imageState = {
     x: 0,
     y: 0,
-    scale: 1.0,
+    scale: 1,
     isDragging: false,
     activePointerId: null,
     lastPointerX: 0,
@@ -155,7 +155,15 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function updateTextControlsUI() {
-    textColorSelect.disabled = !textState.enabled;
+    toggleTextEnabledBtn.innerText = textState.enabled ? "开" : "关";
+    toggleTextEnabledBtn.style.backgroundColor = textState.enabled ? "#000" : "#fff";
+    toggleTextEnabledBtn.style.color = textState.enabled ? "#fff" : "#000";
+
+    const isWhiteText = textState.color === "#ffffff";
+    toggleTextColorBtn.innerText = isWhiteText ? "白" : "黑";
+    toggleTextColorBtn.disabled = !textState.enabled;
+    toggleTextColorBtn.style.backgroundColor = isWhiteText ? "#000" : "#fff";
+    toggleTextColorBtn.style.color = isWhiteText ? "#fff" : "#000";
   }
 
   function beginDrag(pointerId, clientX, clientY) {
@@ -196,6 +204,19 @@ document.addEventListener("DOMContentLoaded", () => {
     updateAdjustModeUI();
   };
 
+  toggleTextEnabledBtn.onclick = () => {
+    textState.enabled = !textState.enabled;
+    updateTextControlsUI();
+    if (!animationId) renderFrame(currentGlobalFrame);
+  };
+
+  toggleTextColorBtn.onclick = () => {
+    if (!textState.enabled) return;
+    textState.color = textState.color === "#000000" ? "#ffffff" : "#000000";
+    updateTextControlsUI();
+    if (!animationId) renderFrame(currentGlobalFrame);
+  };
+
   const handleScale = (e) => {
     imageState.scale = parseFloat(e.target.value) / 100;
     if (!animationId) renderFrame(currentGlobalFrame);
@@ -211,17 +232,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   textYRange.oninput = (e) => {
     textState.y = parseFloat(e.target.value);
-    if (!animationId) renderFrame(currentGlobalFrame);
-  };
-
-  textEnabledSelect.onchange = (e) => {
-    textState.enabled = e.target.value === "on";
-    updateTextControlsUI();
-    if (!animationId) renderFrame(currentGlobalFrame);
-  };
-
-  textColorSelect.onchange = (e) => {
-    textState.color = e.target.value;
     if (!animationId) renderFrame(currentGlobalFrame);
   };
 
@@ -290,6 +300,7 @@ document.addEventListener("DOMContentLoaded", () => {
   async function handleExport() {
     const outSize = 260;
     const scale = outSize / CANVAS_SIZE;
+    const frameCount = textState.enabled ? TOTAL_GIF_FRAMES : TEMPLATE_FRAME_COUNT;
     const outputFileName = "output.gif";
     const downloadName = "generated.gif";
     const mimeType = "image/gif";
@@ -308,7 +319,7 @@ document.addEventListener("DOMContentLoaded", () => {
       tempCanvas.height = outSize;
       const tempCtx = tempCanvas.getContext("2d");
 
-      for (let i = 0; i < TOTAL_GIF_FRAMES; i++) {
+      for (let i = 0; i < frameCount; i++) {
         tempCtx.save();
         tempCtx.scale(scale, scale);
         renderFrame(i, tempCtx);
@@ -320,8 +331,8 @@ document.addEventListener("DOMContentLoaded", () => {
         const fileName = `f_${String(i).padStart(3, "0")}.png`;
         await ffmpeg.writeFile(fileName, await fetchFile(blob));
 
-        if (i % 10 === 0) {
-          generateBtn.innerText = `正在导出帧: ${Math.round((i / TOTAL_GIF_FRAMES) * 100)}%`;
+        if (i % 10 === 0 || i === frameCount - 1) {
+          generateBtn.innerText = `正在导出帧: ${Math.round(((i + 1) / frameCount) * 100)}%`;
         }
       }
 
@@ -351,7 +362,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const data = await ffmpeg.readFile(outputFileName);
 
-      for (let i = 0; i < TOTAL_GIF_FRAMES; i++) {
+      for (let i = 0; i < frameCount; i++) {
         await ffmpeg.deleteFile(`f_${String(i).padStart(3, "0")}.png`);
       }
       await ffmpeg.deleteFile("palette.png");
