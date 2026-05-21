@@ -37,7 +37,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const toggleTextColorBtn = document.getElementById("toggleTextColor");
   const scaleRange = document.getElementById("scaleRange");
   const scaleControlGroup = document.getElementById("scaleControlGroup");
-  const adjustHint = document.getElementById("adjustHint");
   const controlPanel = document.getElementById("controlPanel");
   const resultCard = document.getElementById("resultCard");
   const resultImage = document.getElementById("resultImage");
@@ -303,9 +302,6 @@ document.addEventListener("DOMContentLoaded", () => {
     controlPanel.dataset.mode = adjustMode;
     scaleControlGroup.style.display = isOff ? "none" : "grid";
     scaleRange.value = String(Math.round(getScaleValueForMode() * 100));
-    adjustHint.innerText = isOff
-      ? "已隐藏所有调节滑条。开启调整模式后可直接拖动画布内元素。"
-      : `当前为${ADJUST_MODE_LABELS[adjustMode]}，请直接在画布上拖动目标位置，也可以用下方滑块缩放。`;
   }
 
   function updateTextControlsUI() {

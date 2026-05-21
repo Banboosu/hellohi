@@ -62,17 +62,20 @@ canvas {
 }
 
 .primary-actions {
-    align-items: stretch;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr) minmax(0, 1fr);
+    gap: 0.625rem;
+    align-items: start;
     margin-bottom: 0.875rem;
 }
 
 .action-item {
-    flex: 1 1 0;
     min-width: 0;
 }
 
-.upload-action {
-    flex: 1.05 1 0;
+.upload-action,
+#generateBtn {
+    min-height: 54px;
 }
 
 .adjust-stack {
@@ -81,18 +84,18 @@ canvas {
 }
 
 .adjust-actions {
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 5.1rem;
     gap: 0.5rem;
     align-items: stretch;
 }
 
-.adjust-toggle {
-    flex: 1 1 auto;
+.adjust-toggle,
+.adjust-reset {
+    min-height: 54px;
 }
 
 .adjust-reset {
-    flex: 0 0 5.25rem;
-    min-width: 5.25rem;
     padding-inline: 0.7rem;
 }
 
@@ -100,7 +103,7 @@ canvas {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.75rem;
-    align-items: start;
+    align-items: center;
 }
 
 .control-group {
@@ -143,28 +146,6 @@ canvas {
 .adjust-slider-inline label {
     font-size: 0.92rem;
 }
-
-.adjust-hint {
-    grid-column: 1 / -1;
-    margin: 0;
-    padding: 0.75rem 0.875rem;
-    border: 2px solid #000000;
-    background: #f7f7f7;
-    font-size: 0.95rem;
-    line-height: 1.5;
-}
-
-
-.control-panel[data-mode="off"] .adjust-hint {
-    background: #f7f7f7;
-}
-
-.control-panel[data-mode="image"] .adjust-hint,
-.control-panel[data-mode="text"] .adjust-hint,
-.control-panel[data-mode="ginger"] .adjust-hint {
-    background: #fff7e6;
-}
-
 
 .btn {
     background-color: #ffffff;
@@ -234,28 +215,13 @@ h2 {
         gap: 0.55rem;
     }
 
-    .action-item,
-    .upload-action,
-    .adjust-stack {
-        flex-basis: 100%;
-    }
-
     .primary-actions {
+        grid-template-columns: 1fr;
         gap: 0.55rem;
     }
 
-    .adjust-reset {
-        flex-basis: 4.8rem;
-        min-width: 4.8rem;
-    }
-
-    .adjust-slider-inline {
-        grid-template-columns: 1fr;
-        gap: 0.35rem;
-    }
-
-    .adjust-slider-inline label {
-        font-size: 0.9rem;
+    .adjust-actions {
+        grid-template-columns: minmax(0, 1fr) 4.8rem;
     }
 
     .control-panel {
@@ -281,9 +247,13 @@ h2 {
         min-height: 46px;
     }
 
-    .adjust-hint {
+    .adjust-slider-inline {
+        grid-template-columns: 1fr;
+        gap: 0.35rem;
+    }
+
+    .adjust-slider-inline label {
         font-size: 0.9rem;
-        padding: 0.7rem 0.75rem;
     }
 
     .result-controls {
