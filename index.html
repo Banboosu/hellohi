@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>HELLO!</title>
+        <title>生姜点头生成器</title>
         <link rel="icon" type="image/png" href="icon.png" />
         <link rel="stylesheet" href="style.css" />
         <style>
@@ -28,8 +28,8 @@
                         <canvas id="canvas" width="720" height="720"></canvas>
                     </div>
 
-                    <div class="controls controls-top">
-                        <div class="upload-box action-item">
+                    <div class="controls controls-top primary-actions">
+                        <div class="upload-box action-item upload-action">
                             <label for="fileInput" class="btn btn-block"
                                 >选择图片</label
                             >
@@ -40,12 +40,36 @@
                                 style="display: none"
                             />
                         </div>
-                        <button
-                            id="toggleAdjust"
-                            class="btn btn-block action-item"
-                        >
-                            调整模式: 关
-                        </button>
+                        <div class="adjust-stack action-item">
+                            <div class="adjust-actions">
+                                <button
+                                    id="toggleAdjust"
+                                    class="btn btn-block adjust-toggle"
+                                >
+                                    调整模式：关
+                                </button>
+                                <button
+                                    id="resetAdjustments"
+                                    class="btn adjust-reset"
+                                    type="button"
+                                >
+                                    复位
+                                </button>
+                            </div>
+                            <div
+                                class="control-group adjust-slider-group adjust-slider-inline"
+                                id="scaleControlGroup"
+                            >
+                                <label for="scaleRange">缩放</label>
+                                <input
+                                    type="range"
+                                    id="scaleRange"
+                                    min="10"
+                                    max="300"
+                                    value="100"
+                                />
+                            </div>
+                        </div>
                         <button
                             id="generateBtn"
                             class="btn btn-block action-item"
@@ -54,52 +78,22 @@
                         </button>
                     </div>
 
-                    <div class="control-panel">
-                        <div class="control-group">
-                            <label for="scaleRange">缩放</label>
-                            <input
-                                type="range"
-                                id="scaleRange"
-                                min="10"
-                                max="300"
-                                value="100"
-                            />
-                        </div>
-                        <div class="control-group">
-                            <label for="textXRange">文字 X</label>
-                            <input
-                                type="range"
-                                id="textXRange"
-                                min="0"
-                                max="720"
-                                value="279"
-                            />
-                        </div>
-                        <div class="control-group">
-                            <label for="textYRange">文字 Y</label>
-                            <input
-                                type="range"
-                                id="textYRange"
-                                min="0"
-                                max="720"
-                                value="184"
-                            />
-                        </div>
-                        <div class="control-group">
+                    <div class="control-panel" id="controlPanel">
+                        <div class="control-group control-group-inline text-toggle-group">
                             <label for="toggleTextEnabled">动画文字</label>
-                            <button
-                                id="toggleTextEnabled"
-                                class="btn btn-block"
-                            >
+                            <button id="toggleTextEnabled" class="btn btn-inline">
                                 开
                             </button>
                         </div>
-                        <div class="control-group">
+                        <div class="control-group control-group-inline text-toggle-group">
                             <label for="toggleTextColor">文字颜色</label>
-                            <button id="toggleTextColor" class="btn btn-block">
+                            <button id="toggleTextColor" class="btn btn-inline">
                                 黑
                             </button>
                         </div>
+                        <p class="adjust-hint" id="adjustHint">
+                            进入对应模式后，直接在画布上拖动目标位置。
+                        </p>
                     </div>
                 </div>
 
@@ -115,12 +109,6 @@
                             download="generated.gif"
                             >下载文件</a
                         >
-                        <!--<a
-                            href="https://docsmall.com/gif-compress"
-                            target="_blank"
-                            class="result-link"
-                            >建议到这里压缩一下</a
-                        >-->
                     </div>
                 </div>
             </main>

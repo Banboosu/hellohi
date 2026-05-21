@@ -5,17 +5,40 @@ const TEMPLATE_FRAME_COUNT = 5;
 const TOTAL_GIF_FRAMES = 180;
 const FPS = 30;
 
+const ADJUST_MODES = {
+  OFF: "off",
+  IMAGE: "image",
+  TEXT: "text",
+  GINGER: "ginger",
+};
+
+const ADJUST_MODE_LABELS = {
+  [ADJUST_MODES.OFF]: "关",
+  [ADJUST_MODES.IMAGE]: "调整图片",
+  [ADJUST_MODES.TEXT]: "调整文字",
+  [ADJUST_MODES.GINGER]: "调整生姜",
+};
+
+const ADJUST_MODE_SEQUENCE = [
+  ADJUST_MODES.OFF,
+  ADJUST_MODES.IMAGE,
+  ADJUST_MODES.TEXT,
+  ADJUST_MODES.GINGER,
+];
+
 document.addEventListener("DOMContentLoaded", () => {
   const canvas = document.getElementById("canvas");
   const ctx = canvas.getContext("2d");
   const fileInput = document.getElementById("fileInput");
   const generateBtn = document.getElementById("generateBtn");
   const toggleAdjustBtn = document.getElementById("toggleAdjust");
+  const resetAdjustmentsBtn = document.getElementById("resetAdjustments");
   const toggleTextEnabledBtn = document.getElementById("toggleTextEnabled");
   const toggleTextColorBtn = document.getElementById("toggleTextColor");
   const scaleRange = document.getElementById("scaleRange");
-  const textXRange = document.getElementById("textXRange");
-  const textYRange = document.getElementById("textYRange");
+  const scaleControlGroup = document.getElementById("scaleControlGroup");
+  const adjustHint = document.getElementById("adjustHint");
+  const controlPanel = document.getElementById("controlPanel");
   const resultCard = document.getElementById("resultCard");
   const resultImage = document.getElementById("resultImage");
   const downloadBtn = document.getElementById("downloadBtn");
@@ -24,24 +47,48 @@ document.addEventListener("DOMContentLoaded", () => {
   let frames = [];
   let currentGlobalFrame = 0;
   let animationId = null;
+  let adjustMode = ADJUST_MODES.OFF;
 
-  let isAdjustMode = false;
-  const imageState = {
+  const imageDefaults = {
     x: 0,
     y: 0,
     scale: 1,
+  };
+
+  const textDefaults = {
+    x: 279,
+    y: 184,
+    scale: 1,
+  };
+
+  const gingerDefaults = {
+    x: 0,
+    y: 0,
+    scale: 1,
+  };
+
+  const dragState = {
     isDragging: false,
     activePointerId: null,
     lastPointerX: 0,
     lastPointerY: 0,
   };
 
+  const imageState = {
+    ...imageDefaults,
+  };
+
   const textState = {
-    x: 279,
-    y: 184,
+    ...textDefaults,
     color: "#000000",
     enabled: true,
   };
+
+  const gingerState = {
+    ...gingerDefaults,
+  };
+
+  const textBaseFontSize = 73;
 
   async function loadFrames() {
     const promises = [];
@@ -89,9 +136,73 @@ document.addEventListener("DOMContentLoaded", () => {
     return (end - frame + 1) / (end - outStart + 1);
   }
 
+  function getTextForFrame(globalIdx) {
+    if (globalIdx < 61) {
+      return {
+        alpha: calculateAlpha(globalIdx, 1, 8, 55, 61),
+        text: "HELLO!",
+      };
+    }
+    if (globalIdx < 122) {
+      return {
+        alpha: calculateAlpha(globalIdx, 62, 69, 116, 122),
+        text: "HELLO!",
+      };
+    }
+    return {
+      alpha: calculateAlpha(globalIdx, 123, 130, 175, 180),
+      text: "HI!",
+    };
+  }
+
+  function drawAdjustOverlay(targetCtx, frameData) {
+    if (targetCtx !== ctx || adjustMode === ADJUST_MODES.OFF) return;
+
+    targetCtx.save();
+    targetCtx.lineWidth = 4;
+    targetCtx.strokeStyle = "#007bff";
+    targetCtx.setLineDash([14, 10]);
+
+    if (adjustMode === ADJUST_MODES.IMAGE && userImage) {
+      targetCtx.strokeRect(frameData.imageX, frameData.imageY, frameData.imageW, frameData.imageH);
+    }
+
+    if (adjustMode === ADJUST_MODES.TEXT && textState.enabled && frameData.textAlpha > 0) {
+      targetCtx.font = frameData.textFont;
+      const metrics = targetCtx.measureText(frameData.textLabel);
+      const width = metrics.width;
+      const height = 92 * textState.scale;
+      targetCtx.strokeRect(
+        textState.x - width / 2 - 18,
+        textState.y - height / 2,
+        width + 36,
+        height,
+      );
+    }
+
+    if (adjustMode === ADJUST_MODES.GINGER) {
+      targetCtx.strokeRect(frameData.gingerX, frameData.gingerY, frameData.gingerSize, frameData.gingerSize);
+    }
+
+    targetCtx.restore();
+  }
+
   function renderFrame(globalIdx, targetCtx = ctx) {
     targetCtx.fillStyle = "#ffffff";
     targetCtx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+
+    const frameData = {
+      imageX: 0,
+      imageY: 0,
+      imageW: 0,
+      imageH: 0,
+      textAlpha: 0,
+      textLabel: "",
+      textFont: "",
+      gingerX: 0,
+      gingerY: 0,
+      gingerSize: CANVAS_SIZE,
+    };
 
     if (userImage) {
       targetCtx.save();
@@ -104,54 +215,97 @@ document.addEventListener("DOMContentLoaded", () => {
       const h = userImage.height * drawScale;
       const centerX = (CANVAS_SIZE - w) / 2 + imageState.x;
       const centerY = (CANVAS_SIZE - h) / 2 + imageState.y;
+      frameData.imageX = centerX;
+      frameData.imageY = centerY;
+      frameData.imageW = w;
+      frameData.imageH = h;
       targetCtx.drawImage(userImage, centerX, centerY, w, h);
-
-      if (isAdjustMode && targetCtx === ctx) {
-        targetCtx.strokeStyle = "#007bff";
-        targetCtx.lineWidth = 4;
-        targetCtx.strokeRect(centerX, centerY, w, h);
-      }
       targetCtx.restore();
     }
+
+    const textFrame = getTextForFrame(globalIdx);
+    frameData.textAlpha = textFrame.alpha;
+    frameData.textLabel = textFrame.text;
+    frameData.textFont = `500 ${textBaseFontSize * textState.scale}px 'Source Han Sans SC', 'Source Han Sans CN', 'Noto Sans CJK SC', sans-serif`;
 
     targetCtx.save();
     targetCtx.textAlign = "center";
     targetCtx.textBaseline = "middle";
     targetCtx.fillStyle = textState.color;
-    targetCtx.font =
-      "500 73px 'Source Han Sans SC', 'Source Han Sans CN', 'Noto Sans CJK SC', sans-serif";
+    targetCtx.font = frameData.textFont;
 
-    let alpha = 0;
-    let text = "";
-
-    if (globalIdx < 61) {
-      alpha = calculateAlpha(globalIdx, 1, 8, 55, 61);
-      text = "HELLO!";
-    } else if (globalIdx < 122) {
-      alpha = calculateAlpha(globalIdx, 62, 69, 116, 122);
-      text = "HELLO!";
-    } else {
-      alpha = calculateAlpha(globalIdx, 123, 130, 175, 180);
-      text = "HI!";
-    }
-
-    if (textState.enabled && alpha > 0) {
-      targetCtx.globalAlpha = alpha;
-      targetCtx.fillText(text, textState.x, textState.y);
+    if (textState.enabled && textFrame.alpha > 0) {
+      targetCtx.globalAlpha = textFrame.alpha;
+      targetCtx.fillText(textFrame.text, textState.x, textState.y);
     }
     targetCtx.restore();
 
     const templateIdx = globalIdx % TEMPLATE_FRAME_COUNT;
+    const gingerSize = CANVAS_SIZE * gingerState.scale;
+    const gingerX = (CANVAS_SIZE - gingerSize) / 2 + gingerState.x;
+    const gingerY = (CANVAS_SIZE - gingerSize) / 2 + gingerState.y;
+    frameData.gingerX = gingerX;
+    frameData.gingerY = gingerY;
+    frameData.gingerSize = gingerSize;
     if (frames[templateIdx]) {
-      targetCtx.drawImage(frames[templateIdx], 0, 0, CANVAS_SIZE, CANVAS_SIZE);
+      targetCtx.drawImage(
+        frames[templateIdx],
+        gingerX,
+        gingerY,
+        gingerSize,
+        gingerSize,
+      );
     }
+
+    drawAdjustOverlay(targetCtx, frameData);
+  }
+
+  function resetImageState() {
+    imageState.x = imageDefaults.x;
+    imageState.y = imageDefaults.y;
+    imageState.scale = imageDefaults.scale;
+    scaleRange.value = String(imageDefaults.scale * 100);
+  }
+
+  function resetTextState() {
+    textState.x = textDefaults.x;
+    textState.y = textDefaults.y;
+    textState.scale = textDefaults.scale;
+  }
+
+  function resetGingerState() {
+    gingerState.x = gingerDefaults.x;
+    gingerState.y = gingerDefaults.y;
+    gingerState.scale = gingerDefaults.scale;
+  }
+
+  function resetDragState() {
+    dragState.isDragging = false;
+    dragState.activePointerId = null;
+  }
+
+  function rerenderCurrentFrame() {
+    renderFrame(currentGlobalFrame);
+  }
+
+  function getScaleValueForMode() {
+    if (adjustMode === ADJUST_MODES.TEXT) return textState.scale;
+    if (adjustMode === ADJUST_MODES.GINGER) return gingerState.scale;
+    return imageState.scale;
   }
 
   function updateAdjustModeUI() {
-    toggleAdjustBtn.innerText = `调整模式: ${isAdjustMode ? "开" : "关"}`;
-    toggleAdjustBtn.style.backgroundColor = isAdjustMode ? "#000" : "#fff";
-    toggleAdjustBtn.style.color = isAdjustMode ? "#fff" : "#000";
-    canvas.style.touchAction = isAdjustMode ? "none" : "auto";
+    toggleAdjustBtn.innerText = `调整模式：${ADJUST_MODE_LABELS[adjustMode]}`;
+    const isOff = adjustMode === ADJUST_MODES.OFF;
+    toggleAdjustBtn.style.backgroundColor = isOff ? "#fff" : "#000";
+    toggleAdjustBtn.style.color = isOff ? "#000" : "#fff";
+    canvas.style.touchAction = isOff ? "auto" : "none";
+    controlPanel.dataset.mode = adjustMode;
+    scaleControlGroup.style.display = isOff ? "none" : "grid";
+    scaleRange.value = String(Math.round(getScaleValueForMode() * 100));
+    adjustHint.innerText = isOff
+      ? "已隐藏所有调节滑条。开启调整模式后可直接拖动画布内元素。"
+      : `当前为${ADJUST_MODE_LABELS[adjustMode]}，请直接在画布上拖动目标位置，也可以用下方滑块缩放。`;
   }
 
   function updateTextControlsUI() {
@@ -166,84 +320,110 @@ document.addEventListener("DOMContentLoaded", () => {
     toggleTextColorBtn.style.color = isWhiteText ? "#fff" : "#000";
   }
 
+  function getNextAdjustMode() {
+    const currentIndex = ADJUST_MODE_SEQUENCE.indexOf(adjustMode);
+    return ADJUST_MODE_SEQUENCE[(currentIndex + 1) % ADJUST_MODE_SEQUENCE.length];
+  }
+
   function beginDrag(pointerId, clientX, clientY) {
-    if (!isAdjustMode || !userImage) return;
-    imageState.isDragging = true;
-    imageState.activePointerId = pointerId;
-    imageState.lastPointerX = clientX;
-    imageState.lastPointerY = clientY;
+    if (adjustMode === ADJUST_MODES.OFF) return;
+    if (adjustMode === ADJUST_MODES.IMAGE && !userImage) return;
+    if (adjustMode === ADJUST_MODES.TEXT && !textState.enabled) return;
+
+    dragState.isDragging = true;
+    dragState.activePointerId = pointerId;
+    dragState.lastPointerX = clientX;
+    dragState.lastPointerY = clientY;
   }
 
   function moveDrag(pointerId, clientX, clientY) {
-    if (!imageState.isDragging || imageState.activePointerId !== pointerId) {
+    if (!dragState.isDragging || dragState.activePointerId !== pointerId) {
       return;
     }
+
     const rect = canvas.getBoundingClientRect();
     const canvasScale = CANVAS_SIZE / rect.width;
-    const dx = (clientX - imageState.lastPointerX) * canvasScale;
-    const dy = (clientY - imageState.lastPointerY) * canvasScale;
-    imageState.x += dx;
-    imageState.y += dy;
-    imageState.lastPointerX = clientX;
-    imageState.lastPointerY = clientY;
-    if (!animationId) renderFrame(currentGlobalFrame);
+    const dx = (clientX - dragState.lastPointerX) * canvasScale;
+    const dy = (clientY - dragState.lastPointerY) * canvasScale;
+
+    if (adjustMode === ADJUST_MODES.IMAGE) {
+      imageState.x += dx;
+      imageState.y += dy;
+    } else if (adjustMode === ADJUST_MODES.TEXT) {
+      textState.x += dx;
+      textState.y += dy;
+    } else if (adjustMode === ADJUST_MODES.GINGER) {
+      gingerState.x += dx;
+      gingerState.y += dy;
+    }
+
+    dragState.lastPointerX = clientX;
+    dragState.lastPointerY = clientY;
+    rerenderCurrentFrame();
   }
 
   function endDrag(pointerId) {
-    if (imageState.activePointerId !== pointerId) return;
-    imageState.isDragging = false;
-    imageState.activePointerId = null;
+    if (dragState.activePointerId !== pointerId) return;
+    resetDragState();
   }
 
   toggleAdjustBtn.onclick = () => {
-    isAdjustMode = !isAdjustMode;
-    if (!isAdjustMode) {
-      imageState.isDragging = false;
-      imageState.activePointerId = null;
-    }
+    adjustMode = getNextAdjustMode();
+    resetDragState();
     updateAdjustModeUI();
+    rerenderCurrentFrame();
+  };
+
+  resetAdjustmentsBtn.onclick = () => {
+    resetImageState();
+    resetTextState();
+    resetGingerState();
+    resetDragState();
+    rerenderCurrentFrame();
   };
 
   toggleTextEnabledBtn.onclick = () => {
     textState.enabled = !textState.enabled;
+    if (!textState.enabled && adjustMode === ADJUST_MODES.TEXT) {
+      adjustMode = ADJUST_MODES.OFF;
+      updateAdjustModeUI();
+    }
     updateTextControlsUI();
-    if (!animationId) renderFrame(currentGlobalFrame);
+    rerenderCurrentFrame();
   };
 
   toggleTextColorBtn.onclick = () => {
     if (!textState.enabled) return;
     textState.color = textState.color === "#000000" ? "#ffffff" : "#000000";
     updateTextControlsUI();
-    if (!animationId) renderFrame(currentGlobalFrame);
+    rerenderCurrentFrame();
   };
 
   const handleScale = (e) => {
-    imageState.scale = parseFloat(e.target.value) / 100;
-    if (!animationId) renderFrame(currentGlobalFrame);
+    const nextScale = parseFloat(e.target.value) / 100;
+    if (adjustMode === ADJUST_MODES.TEXT) {
+      textState.scale = nextScale;
+    } else if (adjustMode === ADJUST_MODES.GINGER) {
+      gingerState.scale = nextScale;
+    } else {
+      imageState.scale = nextScale;
+    }
+    rerenderCurrentFrame();
   };
 
   scaleRange.addEventListener("input", handleScale);
   scaleRange.addEventListener("change", handleScale);
 
-  textXRange.oninput = (e) => {
-    textState.x = parseFloat(e.target.value);
-    if (!animationId) renderFrame(currentGlobalFrame);
-  };
-
-  textYRange.oninput = (e) => {
-    textState.y = parseFloat(e.target.value);
-    if (!animationId) renderFrame(currentGlobalFrame);
-  };
-
   canvas.addEventListener("pointerdown", (e) => {
-    if (!isAdjustMode || !userImage) return;
     beginDrag(e.pointerId, e.clientX, e.clientY);
-    canvas.setPointerCapture?.(e.pointerId);
-    e.preventDefault();
+    if (dragState.isDragging) {
+      canvas.setPointerCapture?.(e.pointerId);
+      e.preventDefault();
+    }
   });
 
   canvas.addEventListener("pointermove", (e) => {
-    if (!imageState.isDragging) return;
+    if (!dragState.isDragging) return;
     moveDrag(e.pointerId, e.clientX, e.clientY);
     e.preventDefault();
   });
@@ -269,10 +449,15 @@ document.addEventListener("DOMContentLoaded", () => {
       const img = new Image();
       img.onload = () => {
         userImage = img;
-        imageState.x = 0;
-        imageState.y = 0;
+        resetImageState();
+        resetTextState();
+        resetGingerState();
         currentGlobalFrame = 0;
-        if (!animationId) startPreview();
+        if (!animationId) {
+          startPreview();
+        } else {
+          rerenderCurrentFrame();
+        }
       };
       img.src = event.target.result;
     };
@@ -398,6 +583,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   generateBtn.onclick = () => handleExport();
 
+  resetImageState();
   updateAdjustModeUI();
   updateTextControlsUI();
   loadFrames();
