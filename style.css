@@ -63,7 +63,7 @@ canvas {
 
 .primary-actions {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) minmax(0, 1fr);
     gap: 0.625rem;
     align-items: start;
     margin-bottom: 0.875rem;
@@ -93,6 +93,12 @@ canvas {
 .adjust-toggle,
 .adjust-reset {
     min-height: 54px;
+}
+
+.adjust-toggle {
+    font-size: 0.95rem;
+    letter-spacing: 0.01em;
+    word-break: keep-all;
 }
 
 .adjust-reset {
@@ -194,6 +200,10 @@ h2 {
     border-bottom: 2px solid #000000;
     display: inline-block;
     margin-bottom: 1rem;
+}
+
+#resultCard {
+    scroll-margin-top: 1rem;
 }
 
 @media (max-width: 640px) {

@@ -14,9 +14,9 @@ const ADJUST_MODES = {
 
 const ADJUST_MODE_LABELS = {
   [ADJUST_MODES.OFF]: "关",
-  [ADJUST_MODES.IMAGE]: "调整图片",
-  [ADJUST_MODES.TEXT]: "调整文字",
-  [ADJUST_MODES.GINGER]: "调整生姜",
+  [ADJUST_MODES.IMAGE]: "图片",
+  [ADJUST_MODES.TEXT]: "文字",
+  [ADJUST_MODES.GINGER]: "生姜",
 };
 
 const ADJUST_MODE_SEQUENCE = [
@@ -294,7 +294,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function updateAdjustModeUI() {
-    toggleAdjustBtn.innerText = `调整模式：${ADJUST_MODE_LABELS[adjustMode]}`;
+    toggleAdjustBtn.innerText = `模式：${ADJUST_MODE_LABELS[adjustMode]}`;
     const isOff = adjustMode === ADJUST_MODES.OFF;
     toggleAdjustBtn.style.backgroundColor = isOff ? "#fff" : "#000";
     toggleAdjustBtn.style.color = isOff ? "#000" : "#fff";
@@ -567,7 +567,7 @@ document.addEventListener("DOMContentLoaded", () => {
       downloadBtn.download = downloadName;
       downloadBtn.innerText = "下载 GIF";
       resultCard.style.display = "block";
-      resultCard.scrollIntoView({ behavior: "smooth" });
+      resultCard.scrollIntoView({ behavior: "smooth", block: "start" });
     } catch (error) {
       console.error(error);
       alert("生成失败，请检查控制台或尝试在本地服务器运行。");
