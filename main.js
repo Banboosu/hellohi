@@ -14,9 +14,9 @@ const ADJUST_MODES = {
 
 const ADJUST_MODE_LABELS = {
   [ADJUST_MODES.OFF]: "关",
-  [ADJUST_MODES.IMAGE]: "调整图片",
-  [ADJUST_MODES.TEXT]: "调整文字",
-  [ADJUST_MODES.GINGER]: "调整生姜",
+  [ADJUST_MODES.IMAGE]: "图片",
+  [ADJUST_MODES.TEXT]: "文字",
+  [ADJUST_MODES.GINGER]: "生姜",
 };
 
 const ADJUST_MODE_SEQUENCE = [
