@@ -58,11 +58,13 @@ document.addEventListener("DOMContentLoaded", () => {
   const textDefaults = {
     x: 279,
     y: 184,
+    scale: 1,
   };
 
   const gingerDefaults = {
     x: 0,
     y: 0,
+    scale: 1,
   };
 
   const dragState = {
@@ -85,6 +87,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const gingerState = {
     ...gingerDefaults,
   };
+
+  const textBaseFontSize = 73;
 
   async function loadFrames() {
     const promises = [];
@@ -167,7 +171,7 @@ document.addEventListener("DOMContentLoaded", () => {
       targetCtx.font = frameData.textFont;
       const metrics = targetCtx.measureText(frameData.textLabel);
       const width = metrics.width;
-      const height = 92;
+      const height = 92 * textState.scale;
       targetCtx.strokeRect(
         textState.x - width / 2 - 18,
         textState.y - height / 2,
@@ -177,7 +181,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (adjustMode === ADJUST_MODES.GINGER) {
-      targetCtx.strokeRect(gingerState.x, gingerState.y, CANVAS_SIZE, CANVAS_SIZE);
+      targetCtx.strokeRect(frameData.gingerX, frameData.gingerY, frameData.gingerSize, frameData.gingerSize);
     }
 
     targetCtx.restore();
@@ -194,8 +198,10 @@ document.addEventListener("DOMContentLoaded", () => {
       imageH: 0,
       textAlpha: 0,
       textLabel: "",
-      textFont:
-        "500 73px 'Source Han Sans SC', 'Source Han Sans CN', 'Noto Sans CJK SC', sans-serif",
+      textFont: "",
+      gingerX: 0,
+      gingerY: 0,
+      gingerSize: CANVAS_SIZE,
     };
 
     if (userImage) {
@@ -220,6 +226,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const textFrame = getTextForFrame(globalIdx);
     frameData.textAlpha = textFrame.alpha;
     frameData.textLabel = textFrame.text;
+    frameData.textFont = `500 ${textBaseFontSize * textState.scale}px 'Source Han Sans SC', 'Source Han Sans CN', 'Noto Sans CJK SC', sans-serif`;
 
     targetCtx.save();
     targetCtx.textAlign = "center";
@@ -234,13 +241,19 @@ document.addEventListener("DOMContentLoaded", () => {
     targetCtx.restore();
 
     const templateIdx = globalIdx % TEMPLATE_FRAME_COUNT;
+    const gingerSize = CANVAS_SIZE * gingerState.scale;
+    const gingerX = (CANVAS_SIZE - gingerSize) / 2 + gingerState.x;
+    const gingerY = (CANVAS_SIZE - gingerSize) / 2 + gingerState.y;
+    frameData.gingerX = gingerX;
+    frameData.gingerY = gingerY;
+    frameData.gingerSize = gingerSize;
     if (frames[templateIdx]) {
       targetCtx.drawImage(
         frames[templateIdx],
-        gingerState.x,
-        gingerState.y,
-        CANVAS_SIZE,
-        CANVAS_SIZE,
+        gingerX,
+        gingerY,
+        gingerSize,
+        gingerSize,
       );
     }
 
@@ -257,11 +270,13 @@ document.addEventListener("DOMContentLoaded", () => {
   function resetTextState() {
     textState.x = textDefaults.x;
     textState.y = textDefaults.y;
+    textState.scale = textDefaults.scale;
   }
 
   function resetGingerState() {
     gingerState.x = gingerDefaults.x;
     gingerState.y = gingerDefaults.y;
+    gingerState.scale = gingerDefaults.scale;
   }
 
   function resetDragState() {
@@ -273,6 +288,12 @@ document.addEventListener("DOMContentLoaded", () => {
     renderFrame(currentGlobalFrame);
   }
 
+  function getScaleValueForMode() {
+    if (adjustMode === ADJUST_MODES.TEXT) return textState.scale;
+    if (adjustMode === ADJUST_MODES.GINGER) return gingerState.scale;
+    return imageState.scale;
+  }
+
   function updateAdjustModeUI() {
     toggleAdjustBtn.innerText = `调整模式：${ADJUST_MODE_LABELS[adjustMode]}`;
     const isOff = adjustMode === ADJUST_MODES.OFF;
@@ -280,10 +301,11 @@ document.addEventListener("DOMContentLoaded", () => {
     toggleAdjustBtn.style.color = isOff ? "#000" : "#fff";
     canvas.style.touchAction = isOff ? "auto" : "none";
     controlPanel.dataset.mode = adjustMode;
-    scaleControlGroup.style.display = adjustMode === ADJUST_MODES.IMAGE ? "grid" : "none";
+    scaleControlGroup.style.display = isOff ? "none" : "grid";
+    scaleRange.value = String(Math.round(getScaleValueForMode() * 100));
     adjustHint.innerText = isOff
       ? "已隐藏所有调节滑条。开启调整模式后可直接拖动画布内元素。"
-      : `当前为${ADJUST_MODE_LABELS[adjustMode]}，请直接在画布上拖动目标位置。`;
+      : `当前为${ADJUST_MODE_LABELS[adjustMode]}，请直接在画布上拖动目标位置，也可以用下方滑块缩放。`;
   }
 
   function updateTextControlsUI() {
@@ -378,7 +400,14 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   const handleScale = (e) => {
-    imageState.scale = parseFloat(e.target.value) / 100;
+    const nextScale = parseFloat(e.target.value) / 100;
+    if (adjustMode === ADJUST_MODES.TEXT) {
+      textState.scale = nextScale;
+    } else if (adjustMode === ADJUST_MODES.GINGER) {
+      gingerState.scale = nextScale;
+    } else {
+      imageState.scale = nextScale;
+    }
     rerenderCurrentFrame();
   };
 
